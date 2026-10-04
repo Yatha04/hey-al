@@ -1,13 +1,13 @@
 // Family dashboard: what Al knows and recent calls, read from Mastra memory on every request.
-import { DEMO_RESOURCE_ID, getProfile, listCalls } from "@/mastra/calls";
+import { getProfile, listCalls } from "@/mastra/calls";
+import { DEMO_USER } from "@/mastra/users";
 
 export const dynamic = "force-dynamic";
 
-// ponytail: the demo user's timezone; store one per user when there is more than one.
-const time = (d: Date) => d.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+const time = (d: Date) => d.toLocaleString("en-US", { timeZone: DEMO_USER.timezone, dateStyle: "medium", timeStyle: "short" });
 
 export default async function Dashboard() {
-  const [profile, calls] = await Promise.all([getProfile(DEMO_RESOURCE_ID), listCalls(DEMO_RESOURCE_ID, 20)]);
+  const [profile, calls] = await Promise.all([getProfile(DEMO_USER.id), listCalls(DEMO_USER.id, 20)]);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-10 p-6">

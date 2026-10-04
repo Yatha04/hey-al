@@ -25,6 +25,8 @@ export default createLiveKitWorker({
     options: { readOnly: true },
   }),
   turnHandling: { preemptiveGeneration: { enabled: true } },
+  // Spoken as soon as the tool call starts, so the person is not left in silence.
+  toolFeedback: ({ toolName }) => (toolName === "searchWeb" ? "Let me look that up." : undefined),
   configuration: {
     greeting: { text: "Hello, this is Al. How can I help?" },
     endCall: {},

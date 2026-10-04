@@ -7,7 +7,6 @@ import { z } from "zod";
 export const profileSchema = z.object({
   name: z.string().optional(),
   preferredName: z.string().optional().describe("How they like to be addressed"),
-  home: z.string().optional().describe("Town or city"),
   family: z.array(z.string()).optional().describe('One entry per person, e.g. "Priya, daughter, lives in Austin"'),
   preferences: z.array(z.string()).optional(),
 });

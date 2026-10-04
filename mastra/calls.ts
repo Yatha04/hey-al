@@ -3,8 +3,6 @@ import { z } from "zod";
 import { summarizer } from "./agents/summarizer";
 import { memory, profileSchema } from "./memory";
 
-// ponytail: one demo user until there is sign-in; then derive it from the signed-in user.
-export const DEMO_RESOURCE_ID = "demo-user";
 // The connection route puts earlier calls' summaries under this request-context key; Al's instructions read it.
 export const EARLIER_CALLS_KEY = "earlierCalls";
 // How many earlier calls Al hears about at the start of a call.
