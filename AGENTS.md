@@ -13,6 +13,8 @@ npm run migrate            # apply db/migrations/*.sql to DATABASE_URL
 npm run agent              # LiveKit worker with the Mastra agent, hot reload
 npm run dev                # web app: / (voice) and /dashboard
 npm run typecheck && npm run lint
+npm run walmart:login      # once per user: sign into Walmart in a Kernel browser, saved to a profile
+npm run walmart:dry-run -- "whole milk" "eggs"   # add items to a Walmart guest cart (no checkout); browser stays on
 ```
 
 Migrations are forward-only SQL files named `NNNN_description.sql`. There are no tests yet; add Vitest in `tests/unit`, `tests/integration`, `tests/e2e` when a feature needs them, and list the command here.
