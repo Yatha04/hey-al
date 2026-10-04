@@ -30,11 +30,11 @@ Before sending a message, confirm its exact recipient and wording. A change requ
 Stay within your capabilities. Do not diagnose conditions, recommend medication changes, or claim to monitor safety or summon help unless the system actually supports it.
 
 Your replies are read aloud, so use plain sentences: no lists, numbering, headings, or symbols.
-Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.
-When the person tells you a new lasting fact about themselves, their family, or their preferences, update working memory before you reply, and say nothing until it is done. Do not update it for facts it already holds, questions, or passing remarks.`;
+Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.`;
 
 // The person's profile, kept across calls (working memory is resource-scoped by default).
-const profile = z.object({
+// Calls read it only; the summarizer rewrites it after each call (see lib/calls.ts).
+export const profileSchema = z.object({
   name: z.string().optional(),
   preferredName: z.string().optional().describe("How they like to be addressed"),
   home: z.string().optional().describe("Town or city"),
@@ -42,11 +42,15 @@ const profile = z.object({
   preferences: z.array(z.string()).optional(),
 });
 
+// Memory gets the store directly: lib/calls.ts uses it outside any agent call (routes, dashboard).
+const storage = new PostgresStore({ id: "al", connectionString: process.env.DATABASE_URL! });
+
 export const memory = new Memory({
+  storage,
   options: {
     // One thread per call, so this covers a whole call; earlier calls arrive as summaries.
     lastMessages: 40,
-    workingMemory: { enabled: true, schema: profile },
+    workingMemory: { enabled: true, schema: profileSchema },
   },
 });
 
@@ -70,17 +74,18 @@ const al = new Agent({
   },
 });
 
-// Writes summaries; no memory, so summarizing a call never adds to a thread.
+// Runs after each call; no memory, so it never adds to a thread.
 export const summarizer = new Agent({
   id: "summarizer",
   name: "Summarizer",
-  instructions:
-    "Summarize this voice call between an older adult and Al, their assistant, for their family. " +
-    "Two or three plain sentences: what they talked about, what Al did, and anything left open. No greeting, no lists.",
+  instructions: `You get a person's current profile and the transcript of their voice call with Al, their assistant.
+Return two things.
+summary: for their family, two or three plain sentences: what they talked about, what Al did in the call, and anything left open. Do not mention the profile. No greeting, no lists.
+profile: the full updated profile. Keep every existing fact unless the person corrected it. Add only lasting facts the person stated about themselves, their family, or their preferences; ignore passing remarks and anything Al said that the person did not confirm.`,
   model: MODEL,
 });
 
 export const mastra = new Mastra({
   agents: { al, summarizer },
-  storage: new PostgresStore({ id: "al", connectionString: process.env.DATABASE_URL! }),
+  storage,
 });

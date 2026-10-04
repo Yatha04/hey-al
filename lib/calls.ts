@@ -1,5 +1,6 @@
 // Calls are Mastra memory threads: one per LiveKit room, all owned by the user's resource id.
-import { memory, summarizer } from "../agent/mastra";
+import { z } from "zod";
+import { memory, profileSchema, summarizer } from "../agent/mastra";
 
 // ponytail: one demo user until there is sign-in; then derive it from the signed-in user.
 export const DEMO_RESOURCE_ID = "demo-user";
@@ -31,8 +32,29 @@ export async function describeEarlierCalls(resourceId: string): Promise<string> 
     .join("\n");
 }
 
-/** Summarizes a finished call into its thread's metadata. Does nothing for a call with no messages. */
-export async function summarizeCall(threadId: string): Promise<void> {
+export type Turn = { id: string; role: "user" | "assistant"; text: string; createdAt: Date };
+
+/** Saves one committed turn. Ids come from LiveKit, so saving a turn again overwrites it. */
+export async function saveTurn(threadId: string, resourceId: string, turn: Turn): Promise<void> {
+  await memory.saveMessages({
+    messages: [
+      {
+        id: turn.id,
+        threadId,
+        resourceId,
+        role: turn.role,
+        type: "text",
+        createdAt: turn.createdAt,
+        content: { format: 2, parts: [{ type: "text", text: turn.text }] },
+      },
+    ],
+  });
+}
+
+const callOutcome = z.object({ summary: z.string(), profile: profileSchema });
+
+/** After a call: writes its summary to the thread and the updated profile to working memory. Skips a call with no messages. */
+export async function summarizeCall(threadId: string, resourceId: string): Promise<void> {
   const thread = await memory.getThreadById({ threadId });
   if (!thread) return;
   const { messages } = await memory.recall({ threadId, perPage: false });
@@ -45,8 +67,14 @@ export async function summarizeCall(threadId: string): Promise<void> {
     .filter(Boolean)
     .join("\n");
   if (!transcript) return;
-  const { text } = await summarizer.generate(transcript);
-  await memory.updateThread({ id: threadId, title: thread.title ?? "Voice call", metadata: { ...thread.metadata, summary: text } });
+  const current = await memory.getWorkingMemory({ threadId, resourceId });
+  const { object } = await summarizer.generate(`Current profile:\n${current ?? "{}"}\n\nTranscript:\n${transcript}`, {
+    structuredOutput: { schema: callOutcome },
+  });
+  await memory.updateThread({ id: threadId, title: thread.title ?? "Voice call", metadata: { ...thread.metadata, summary: object.summary } });
+  // Structured output fills every field; drop the empty ones so the profile holds only known facts.
+  const profile = JSON.stringify(object.profile, (_, v) => (v === "" || (Array.isArray(v) && v.length === 0) ? undefined : v));
+  await memory.updateWorkingMemory({ threadId, resourceId, workingMemory: profile });
 }
 
 /** The person's working-memory profile as JSON text, or null before Al has saved anything. */
