@@ -3,9 +3,8 @@
 import { randomUUID } from "node:crypto";
 import { serializeSessionMetadata } from "@mastra/livekit";
 import { AccessToken, RoomAgentDispatch, RoomConfiguration } from "livekit-server-sdk";
-import { EARLIER_CALLS_KEY } from "@/agent/mastra";
 import { AGENT_NAME } from "@/lib/agent-name";
-import { DEMO_RESOURCE_ID, describeEarlierCalls } from "@/lib/calls";
+import { DEMO_RESOURCE_ID, EARLIER_CALLS_KEY, describeEarlierCalls } from "@/mastra/calls";
 
 export async function POST() {
   const { LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = process.env;

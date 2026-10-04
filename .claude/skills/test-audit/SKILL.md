@@ -29,7 +29,7 @@ Before adding a test, answer four questions. A missing answer means do not add i
 
 1. What observable behavior, invariant, or independent contract does it protect?
 2. What credible regression makes it fail?
-3. Why does existing coverage not already catch that failure? Each contract has one primary test at the strongest boundary. Here that is usually the `lib/` function, not the agent tool or a private helper. Another layer needs its own risk, such as a DB transaction, provider wire format, or agent tool-use failure the owner cannot reach. Prefer a new `it.each` case over a near-duplicate test.
+3. Why does existing coverage not already catch that failure? Each contract has one primary test at the strongest boundary. Here that is usually the domain function in `mastra/<domain>.ts`, not the agent tool or a private helper. Another layer needs its own risk, such as a DB transaction, provider wire format, or agent tool-use failure the owner cannot reach. Prefer a new `it.each` case over a near-duplicate test.
 4. Does it need a production seam (export, flag, wrapper, injection hook, an exported internal helper) that no production caller needs? If yes, test at the real boundary instead.
 
 Then check the test against every [junk pattern](#junk-patterns). A match fails the gate unless the [retention bar](#retention-bar) names the contract it guards. A test that breaks under a behavior-preserving refactor asserts implementation; rewrite it at the owning boundary.

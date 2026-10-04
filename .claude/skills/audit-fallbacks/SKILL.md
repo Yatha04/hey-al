@@ -1,11 +1,11 @@
 ---
 name: audit-fallbacks
-description: Error-tolerance validity sweep — given a scope (folder, PR number, or --diff), judges every try/catch, .catch(), Promise.allSettled, error-only `??`/`||` default, and unawaited `void` promise (valid tolerance or swallowed error?), every `as any`/double cast or optional access on a field the type says is present, every server-clock calendar-day derivation, and in tests every mock double (internal modules must be typed mocks) and every pinned date compared against a clock-stamped value. Use before merging error handling, timezone logic, or tests, or periodically per lib/ domain.
+description: Error-tolerance validity sweep — given a scope (folder, PR number, or --diff), judges every try/catch, .catch(), Promise.allSettled, error-only `??`/`||` default, and unawaited `void` promise (valid tolerance or swallowed error?), every `as any`/double cast or optional access on a field the type says is present, every server-clock calendar-day derivation, and in tests every mock double (internal modules must be typed mocks) and every pinned date compared against a clock-stamped value. Use before merging error handling, timezone logic, or tests, or periodically per domain module.
 ---
 
 # /audit-fallbacks — Is This Tolerance Valid, or a Swallowed Error?
 
-When the user invokes `/audit-fallbacks <scope>` (`lib/tasks.ts`, `PR#12`, `--diff`), judge every tolerance site in scope. Report only; do not apply fixes.
+When the user invokes `/audit-fallbacks <scope>` (`mastra/calls.ts`, `PR#12`, `--diff`), judge every tolerance site in scope. Report only; do not apply fixes.
 
 Doctrine (AGENTS.md): never swallow failures or report success without evidence. A keep needs an articulable reason that the degraded result is correct product behavior for a specific expected failure. The tie-breaker is remove — let it throw. `null`/`undefined` means genuine absence, never "an error happened". The agent speaks about an outcome only from an application result, so a swallowed failure inside a tool becomes a spoken lie.
 
@@ -21,9 +21,9 @@ Doctrine (AGENTS.md): never swallow failures or report success without evidence.
 
    More than ~10 tolerance sites → one subagent per file with its site list; merge into the final report.
 
-3. **Classify each tolerance body — what can actually throw in there?** Trace one hop into called functions. Record `body_kind`: `db_read | db_write | provider_call | llm_call | pure_compute | mixed`. A body that calls a `lib/` function that touches Neon is DB-touching even if no query appears at the site.
+3. **Classify each tolerance body — what can actually throw in there?** Trace one hop into called functions. Record `body_kind`: `db_read | db_write | provider_call | llm_call | pure_compute | mixed`. A body that calls a `mastra/` function that touches Neon is DB-touching even if no query appears at the site.
 
-4. **Check breadth.** Every JS catch is untyped, so breadth is what the body rethrows: does it test the error and `throw err` for anything unexpected? Name the driver's error class by reading the imports in `lib/` and `agent/mastra.ts` (`DatabaseError` from pg via `@mastra/pg`, or a Mastra storage error); do not prescribe a class you have not confirmed is importable here. A DB-touching body that rethrows nothing is presumptively wrong. A catch that swallows an `AbortError` from barge-in leaves a cancelled turn running in the agent.
+4. **Check breadth.** Every JS catch is untyped, so breadth is what the body rethrows: does it test the error and `throw err` for anything unexpected? Name the driver's error class by reading the imports in `mastra/memory.ts` and `mastra/` (`DatabaseError` from pg via `@mastra/pg`, or a Mastra storage error); do not prescribe a class you have not confirmed is importable here. A DB-touching body that rethrows nothing is presumptively wrong. A catch that swallows an `AbortError` from barge-in leaves a cancelled turn running in the agent.
 
 5. **Verdict per site.** Name the expected error class(es); "Error" is not an answer.
    - **VALID_KEEP** — specific expected failure; degraded result is correct behavior; DB/transient errors cannot be silently absorbed.
@@ -51,7 +51,7 @@ Doctrine (AGENTS.md): never swallow failures or report success without evidence.
 - **DICT_OBJECT_CONFUSION** — code does not know which shape it holds (raw row vs mapped object, JSON vs class). Fix upstream normalization (a zod parse at the boundary).
 - **LEGIT_DYNAMIC** — runtime keys, shape-varying SDK objects, version probing. Mark `// cast-ok: <reason>`.
 
-**Mock doubles (test files).** Our own code (anything under `lib/`, `agent/`, `app/`) is doubled with a typed signature: `vi.fn<typeof fn>()`, and `vi.mock` of an internal module uses `importOriginal` or a factory typed against the real module. A bare `vi.fn()` or an `as any` double accepts any call shape, so drift passes.
+**Mock doubles (test files).** Our own code (anything under `mastra/`, `lib/`, `app/`) is doubled with a typed signature: `vi.fn<typeof fn>()`, and `vi.mock` of an internal module uses `importOriginal` or a factory typed against the real module. A bare `vi.fn()` or an `as any` double accepts any call shape, so drift passes.
 - **NEEDS_AUTOSPEC** — internal module/function doubled untyped. Give the exact rewrite.
 - **LEGIT_OPAQUE** — SDK primitive (LiveKit room/participant, fetch `Response`, Neon pool) whose fields the test never asserts. Waive deliberate exceptions with `// mock-ok: <reason>`.
 

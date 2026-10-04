@@ -1,5 +1,5 @@
 // Family dashboard: what Al knows and recent calls, read from Mastra memory on every request.
-import { DEMO_RESOURCE_ID, getProfile, listCalls } from "@/lib/calls";
+import { DEMO_RESOURCE_ID, getProfile, listCalls } from "@/mastra/calls";
 
 export const dynamic = "force-dynamic";
 

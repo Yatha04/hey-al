@@ -12,6 +12,7 @@ npm install
 npm run agent:download     # once
 npm run agent              # terminal 1: voice worker
 npm run dev                # terminal 2: http://localhost:3000 and /dashboard
+npm run studio             # optional: Mastra Studio at http://localhost:4111
 ```
 
 See `AGENTS.md` for layout and conventions.
