@@ -31,7 +31,7 @@ Stay within your capabilities. Do not diagnose conditions, recommend medication 
 
 Your replies are read aloud, so use plain sentences: no lists, numbering, headings, or symbols.
 Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.
-When the person tells you a lasting fact about themselves, their family, or their preferences, update working memory. Do not save passing remarks.`;
+When the person tells you a new lasting fact about themselves, their family, or their preferences, update working memory before you reply, and say nothing until it is done. Do not update it for facts it already holds, questions, or passing remarks.`;
 
 // The person's profile, kept across calls (working memory is resource-scoped by default).
 const profile = z.object({
