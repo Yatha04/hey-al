@@ -1,5 +1,6 @@
 // The LiveKit worker: runs the voice pipeline and answers each turn with the Mastra agent.
-// Memory is read-only during a call: no tool calls slow a turn, and preemptive generation is safe.
+// Memory is read-only during a call: no memory tool calls slow a turn. Preemptive generation runs Mastra tools
+// on replies LiveKit may discard, so a tool that writes (createReminder) must wait for the person's yes (see agents/al.ts).
 // The worker saves committed turns itself; the profile and summary are written after the call.
 import { fileURLToPath } from "node:url";
 import { voice } from "@livekit/agents";
