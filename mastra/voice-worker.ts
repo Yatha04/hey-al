@@ -1,5 +1,6 @@
 // The LiveKit worker: runs the voice pipeline and answers each turn with the Mastra agent.
-// Memory is read-only during a call: no tool calls slow a turn, and preemptive generation is safe.
+// Memory is read-only during a call: no memory tool calls slow a turn. Preemptive generation runs Mastra tools
+// on replies LiveKit may discard, so a tool that writes (createReminder) must wait for the person's yes (see agents/al.ts).
 // The worker saves committed turns itself; the profile and summary are written after the call.
 import { fileURLToPath } from "node:url";
 import { voice } from "@livekit/agents";
@@ -8,6 +9,7 @@ import { AGENT_NAME } from "../lib/agent-name";
 import { saveTurn, summarizeCall } from "./calls";
 import { registerSpeaker, unregisterSpeaker } from "./errands";
 import { mastra } from "./index";
+import { REMINDER_KEY, markDelivered, readCallReminder } from "./reminders";
 
 // Live calls in this process, by thread id, so onCallEnd can wait for their turn writes.
 const calls = new Map<string, { session: voice.AgentSession; pending: Set<Promise<void>> }>();
@@ -29,11 +31,24 @@ export default createLiveKitWorker({
   // Spoken as soon as the tool call starts, so the person is not left in silence.
   toolFeedback: ({ toolName }) => (toolName === "searchWeb" ? "Let me look that up." : undefined),
   configuration: {
-    greeting: { text: "Hello, this is Al. How can I help?" },
+    // A reminder call opens with the reminder itself, as fixed text: a model-written opening grew into a menu in Saath.
+    greeting: {
+      text: ({ metadata }) => {
+        const reminder = readCallReminder(metadata.requestContext?.[REMINDER_KEY]);
+        return reminder ? `Hello, this is Al with your reminder to ${reminder.text}.` : "Hello, this is Al. How can I help?";
+      },
+    },
     endCall: {},
   },
   // Runs after the greeting is spoken and saved by the worker, so the greeting is not saved twice.
-  onSessionStart: ({ session, agent }) => {
+  onSessionStart: async ({ session, agent, metadata }) => {
+    const reminder = readCallReminder(metadata.requestContext?.[REMINDER_KEY]);
+    if (reminder) {
+      // The greeting is saying it now. A failed write leaves the claim to be retried, so the call goes on.
+      await markDelivered(reminder.id).catch((e) => {
+        console.error("markDelivered failed", { reminderId: reminder.id, error: e instanceof Error ? e.name : typeof e });
+      });
+    }
     const mapping = agent.memory;
     if (!mapping) return;
     const { thread, resource = thread } = mapping;

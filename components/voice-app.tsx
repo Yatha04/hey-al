@@ -9,6 +9,7 @@ import { ConnectionState, createLocalAudioTrack, Room, RoomEvent, type LocalAudi
 import { Orb } from "./orb";
 
 type Transcript = { id: string; speaker: string; text: string };
+type ConnectionDetails = { serverUrl: string; participantToken: string };
 type VoiceState = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "muted" | "error";
 const labels: Record<VoiceState, string> = {
   idle: "Ready", connecting: "Connecting", listening: "Listening",
@@ -73,7 +74,8 @@ export function VoiceApp() {
     void current?.disconnect();
   }, []);
 
-  const startCall = async () => {
+  // `claimed` is a reminder call the poll below already got from the server; otherwise this asks for a new call.
+  const startCall = async (claimed?: ConnectionDetails) => {
     if (busy.current || roomRef.current) return;
     busy.current = true;
     const currentAttempt = ++attempt.current;
@@ -88,15 +90,19 @@ export function VoiceApp() {
       track = await createLocalAudioTrack({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
       if (attempt.current !== currentAttempt) { track.stop(); return; }
       pendingTrack.current = track;
-      const controller = new AbortController();
-      request.current = controller;
-      const timeout = setTimeout(() => controller.abort(), 15_000);
-      let response: Response;
-      try {
-        response = await fetch("/api/connection-details", { method: "POST", signal: controller.signal });
-      } finally { clearTimeout(timeout); }
-      const details = await response.json();
-      if (!response.ok) throw new Error(details.error || "Couldn't start the call. Try again.");
+      let details = claimed;
+      if (!details) {
+        const controller = new AbortController();
+        request.current = controller;
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+        let response: Response;
+        try {
+          response = await fetch("/api/connection-details", { method: "POST", signal: controller.signal });
+        } finally { clearTimeout(timeout); }
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Couldn't start the call. Try again.");
+        details = body as ConnectionDetails;
+      }
       if (attempt.current !== currentAttempt) { track.stop(); return; }
       nextRoom = new Room({ adaptiveStream: true, dynacast: true });
       const connectedRoom = nextRoom;
@@ -120,7 +126,27 @@ export function VoiceApp() {
     }
   };
 
-  const common = { starting, error, transcript, showTranscript, setShowTranscript, startCall, endCall };
+  // The page is the reminder device: while idle, it asks the server to claim a due reminder, then starts that call.
+  // Audio plays without a click only if the person used the page before, so the browser allows it (autoplay rules).
+  const startCallRef = useRef(startCall);
+  useEffect(() => { startCallRef.current = startCall; });
+  useEffect(() => {
+    let polling = false;
+    const timer = setInterval(async () => {
+      if (polling || busy.current || roomRef.current) return;
+      polling = true;
+      try {
+        const response = await fetch("/api/connection-details?reminder=due", { method: "POST", signal: AbortSignal.timeout(10_000) });
+        if (response.status === 200) void startCallRef.current(await response.json());
+        else if (response.status !== 204) console.warn("reminder check failed", response.status);
+      } catch (cause) {
+        console.warn("reminder check failed", cause instanceof Error ? cause.name : cause);
+      } finally { polling = false; }
+    }, 5_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const common = { starting, error, transcript, showTranscript, setShowTranscript, startCall: () => void startCall(), endCall };
   return <main className="voice-app">
     {room ? <RoomContext.Provider value={room}>
       <ConnectedVoice {...common} onError={failCall} onTranscript={setTranscript} />

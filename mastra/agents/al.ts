@@ -2,13 +2,19 @@ import { Agent } from "@mastra/core/agent";
 import { createEndCallTool } from "@mastra/livekit";
 import { EARLIER_CALLS_KEY } from "../calls";
 import { memory } from "../memory";
+import { REMINDER_KEY, describeTime, readCallReminder } from "../reminders";
+import { acknowledgeReminderTool } from "../tools/acknowledge-reminder";
+import { createReminderTool } from "../tools/create-reminder";
 import { getWeatherTool } from "../tools/get-weather";
 import { addToAmazonCartTool, openDukeBillTool } from "../tools/kernel-errands";
 import { searchWebTool } from "../tools/search-web";
+import { snoozeReminderTool } from "../tools/snooze-reminder";
 import { currentUser, describeUser } from "../users";
 
-// From Saath (feat/reminders), with the reminder, weather, pace and memory tool lines removed.
+// From Saath (feat/reminders), with the pace and memory tool lines removed.
 // Add a feature's prompt lines together with its tool.
+// createReminder waits for a yes: the worker's preemptive generation runs tools on a reply LiveKit may discard,
+// so saving on a half-heard "at nine" would leave a second reminder once "nine thirty" arrives.
 const INSTRUCTIONS = `You are Al, a voice assistant that helps people manage everyday plans, communication, and practical questions. Support the person's choices and routines using the capabilities actually available to you.
 
 Speak warmly and respectfully, adult to adult. Use natural, clear language and the person's preferred form of address. Adapt to expressed preferences; do not assume hearing loss, memory problems, loneliness, or dependence from age or living arrangements. Avoid pet names, baby talk, and praise for ordinary adult activities.
@@ -48,32 +54,51 @@ Use getWeather for the weather where the person lives. Do not use searchWeb for 
 Use addToAmazonCart to put one item in the person's Amazon cart, and openDukeBill to open their Duke Energy bill. They use the person's saved logins.
 Before addToAmazonCart, say back the item in a few words and wait for a yes. One item per call.
 Both take a few minutes and report back on their own. When one returns started, say in one short sentence that you are working on it and will tell them when it is done, then keep talking about anything else. When it returns already_running, say you are still working on it. Never say the result before it is reported. If the person says goodbye before a result is reported, tell them it stops if they hang up now.
-You cannot place an Amazon order or pay a bill. If asked, say the person or their family can do that in the Amazon app or on the Duke Energy website.`;
+You cannot place an Amazon order or pay a bill. If asked, say the person or their family can do that in the Amazon app or on the Duke Energy website.
+
+Reminders: createReminder needs what to do and a definite local date and time. If either is missing or unclear, ask for it; never guess. Say the reminder and its time back and call createReminder only after the person agrees. When it is saved, say what and when in one sentence. You remind them by calling them on this page at that time, so say so only if they ask how.`;
+
+// In a call started by a reminder. Its opening line is spoken by the worker's greeting (voice-worker.ts).
+// In Saath's first live calls an opening written by the model grew into a menu, hence the fixed greeting and these rules.
+const reminderCallInstructions = (text: string, dueAt: string) =>
+  `This call was started by the person's reminder to "${text}", set for ${dueAt}; you have already said it. ` +
+  "Do not list what they can say or ask what they want to do next; they will tell you. " +
+  "Call acknowledgeReminder only when the person says they heard it or did it, and snoozeReminder when they ask for it later. Silence means neither.";
+
+const tools = {
+  searchWeb: searchWebTool,
+  getWeather: getWeatherTool,
+  addToAmazonCart: addToAmazonCartTool,
+  openDukeBill: openDukeBillTool,
+  createReminder: createReminderTool,
+  endCall: createEndCallTool({
+    // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
+    description:
+      "End the call after the person says goodbye. Say a short goodbye first. " +
+      'Do not call when the person interrupts with "stop", "wait" or "hold on": that means stop talking and listen.',
+  }),
+};
 
 export const al = new Agent({
   id: "al",
   name: "Al",
   // Resolved on every turn, so the local time stays current.
   instructions: ({ requestContext }) => {
-    const parts = [INSTRUCTIONS, describeUser(currentUser(requestContext), new Date())];
+    const user = currentUser(requestContext);
+    const parts = [INSTRUCTIONS, describeUser(user, new Date())];
     const earlier = requestContext.get(EARLIER_CALLS_KEY);
     if (typeof earlier === "string" && earlier) parts.push(`Summaries of earlier calls, oldest first:\n${earlier}`);
+    const reminder = readCallReminder(requestContext.get(REMINDER_KEY));
+    if (reminder) parts.push(reminderCallInstructions(reminder.text, describeTime(new Date(reminder.dueAt), user.timezone)));
     return parts.join("\n\n");
   },
   // gpt-4.1-mini (Saath's choice) broke the spoken-answer rules about half the time: unasked hours,
   // follow-up offers, missing warnings. gpt-4.1 followed them at the same latency. Reads OPENAI_API_KEY.
   model: "openai/gpt-4.1",
   memory,
-  tools: {
-    searchWeb: searchWebTool,
-    getWeather: getWeatherTool,
-    addToAmazonCart: addToAmazonCartTool,
-    openDukeBill: openDukeBillTool,
-    endCall: createEndCallTool({
-      // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
-      description:
-        "End the call after the person says goodbye. Say a short goodbye first. " +
-        'Do not call when the person interrupts with "stop", "wait" or "hold on": that means stop talking and listen.',
-    }),
-  },
+  // The acknowledge and snooze tools exist only in a reminder call, so Al never answers for a reminder it did not say.
+  tools: ({ requestContext }) =>
+    readCallReminder(requestContext.get(REMINDER_KEY))
+      ? { ...tools, acknowledgeReminder: acknowledgeReminderTool, snoozeReminder: snoozeReminderTool }
+      : tools,
 });
