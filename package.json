@@ -11,7 +11,10 @@
     "agent": "tsx --env-file=.env mastra/voice-worker.ts dev",
     "agent:download": "livekit-agents download-files",
     "studio": "mastra dev --dir mastra",
-    "test:integration": "vitest run tests/integration --silent=false"
+    "test:integration": "vitest run tests/integration --silent=false",
+    "site:login": "tsx --env-file=.env scripts/site-login.ts",
+    "flows": "tsx --env-file=.env scripts/kernel-flows.ts",
+    "test": "vitest run tests/unit"
   },
   "dependencies": {
     "@livekit/agents": "^1.9.1",
@@ -22,9 +25,11 @@
     "@mastra/livekit": "^0.4.2",
     "@mastra/memory": "^1.35.0",
     "@mastra/pg": "^1.29.0",
+    "@onkernel/sdk": "^0.119.0",
     "livekit-client": "^2.22.3",
     "livekit-server-sdk": "^2.19.1",
     "next": "16.3.8",
+    "playwright-core": "^1.63.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.6.5"
