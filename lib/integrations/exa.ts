@@ -3,7 +3,7 @@
 // Al is silent while this runs (after "Let me look that up"), so fail fast.
 const TIMEOUT_MS = 8000;
 
-export type SearchResult = { title: string; url: string; publishedDate?: string; highlights: string[] };
+export type SearchResult = { title: string; url: string; publishedDate?: string; highlights: string[]; closedForGood?: true };
 
 type ExaResponse = { results: { title: string | null; url: string; publishedDate?: string; highlights?: string[] }[] };
 
@@ -24,5 +24,9 @@ export async function searchWeb(query: string): Promise<SearchResult[]> {
     url: r.url,
     publishedDate: r.publishedDate,
     highlights: r.highlights ?? [],
+    // Yelp titles a business that shut down "NAME - CLOSED - ..." ("TEMPORARILY CLOSED" does not match) while directory pages still list its hours.
+    // In testing the model missed that title half the time; a field it cannot miss.
+    // ponytail: Yelp's marker only; add other sites' markers when a closed place slips through.
+    ...(r.title && r.title.includes(" - CLOSED - ") ? { closedForGood: true as const } : {}),
   }));
 }

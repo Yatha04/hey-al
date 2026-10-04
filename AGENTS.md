@@ -13,9 +13,10 @@ npm run agent              # LiveKit worker with the Mastra agent, hot reload
 npm run dev                # web app: / (voice) and /dashboard
 npm run studio             # Mastra Studio: test Al and tools by text, no voice
 npm run typecheck && npm run lint
+npm run test:integration   # asks Al ~20 real questions (OpenAI, Exa, Open-Meteo; costs a little, about 1 min) and prints answers and times
 ```
 
-There are no tests yet; add Vitest in `tests/unit`, `tests/integration`, `tests/e2e` when a feature needs them, and list the command here.
+Tests use Vitest in `tests/unit`, `tests/integration`, `tests/e2e`; list each new command here. The integration test checks only the spoken-answer rules: read the printed answers for wrong facts.
 
 ## Layout
 
