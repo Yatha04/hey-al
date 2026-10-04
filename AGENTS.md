@@ -15,7 +15,7 @@ npm run studio             # Mastra Studio: test Al and tools by text, no voice
 npm run typecheck && npm run lint
 npm test                   # Vitest unit tests in tests/unit
 npm run site:login -- amazon|duke   # once per user and site: sign in on a Kernel live view, saved to a profile
-npm run flows -- both "AA batteries"   # Amazon to the review page and Duke to the payment page, in parallel; nothing is ordered or paid
+npm run flows -- both "AA batteries"   # Amazon to the checkout review page and Duke's bill open, in parallel; nothing is ordered or paid
 ```
 
 Vitest tests live in `tests/unit`; add `tests/integration` and `tests/e2e` when a feature needs them, and list the command here.
@@ -28,7 +28,7 @@ Vitest tests live in `tests/unit`; add `tests/integration` and `tests/e2e` when 
   - `agents/al.ts` — Al's prompt, model, and tools. `agents/summarizer.ts` — end-of-call summary and profile update.
   - `tools/` — one file per tool (Mastra `createTool` with zod input); thin: validate, call `lib/integrations/`, return the result.
   - `calls.ts` — calls are memory threads: list, save turns, summarize, earlier-call summaries.
-  - `sites.ts` — sites Al acts on with a saved Kernel login (Amazon, Duke Energy): login check and bot wall. `amazon-order.ts` — add an item and stop on the checkout review page; `duke-bill.ts` — read the bill and stop on the payment page. Both drive `agents/browser.ts`, an LLM that acts on the page; code guards refuse the final order or payment click. Not yet tools.
+  - `sites.ts` — sites Al acts on with a saved Kernel login (Amazon, Duke Energy): login check and bot wall. `amazon-order.ts` — add an item and stop on the checkout review page; `duke-bill.ts` — open the current bill (a PDF tab), scripted. Amazon drives `agents/browser.ts`, an LLM that acts on the page; code guards refuse the final order or payment click. Not yet tools.
   - `voice-worker.ts` — the LiveKit worker (`createLiveKitWorker`); memory is read-only during a call.
 - `lib/integrations/` — thin external API clients (Exa, AgentMail, Kernel, …); `kernel.ts` opens a Kernel cloud browser and connects Playwright. `lib/agent-name.ts` — the LiveKit agent name.
 - `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `api/connection-details` (LiveKit token plus earlier-call summaries).
