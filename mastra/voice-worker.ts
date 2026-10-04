@@ -6,6 +6,7 @@ import { voice } from "@livekit/agents";
 import { createLiveKitWorker, runLiveKitWorker } from "@mastra/livekit/worker";
 import { AGENT_NAME } from "../lib/agent-name";
 import { saveTurn, summarizeCall } from "./calls";
+import { registerSpeaker, unregisterSpeaker } from "./errands";
 import { mastra } from "./index";
 
 // Live calls in this process, by thread id, so onCallEnd can wait for their turn writes.
@@ -38,6 +39,8 @@ export default createLiveKitWorker({
     const { thread, resource = thread } = mapping;
     const pending = new Set<Promise<void>>();
     calls.set(thread, { session, pending });
+    // Errand results (Amazon cart, Duke bill) arrive minutes after their turn; say() adds them to the chat, so they are saved too.
+    registerSpeaker(thread, (text) => session.say(text));
 
     // Fires only for items the session committed, never for discarded preemptive replies.
     session.on(voice.AgentSessionEventTypes.ConversationItemAdded, ({ item }) => {
@@ -58,6 +61,7 @@ export default createLiveKitWorker({
     if (!memory) return;
     const call = calls.get(memory.thread);
     calls.delete(memory.thread);
+    unregisterSpeaker(memory.thread);
     if (call) {
       await call.session.close();
       await Promise.all(call.pending);
