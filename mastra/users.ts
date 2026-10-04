@@ -10,13 +10,14 @@ export type User = {
 };
 
 // ponytail: one seeded demo user until onboarding exists; then load the signed-in user's record.
+// Placeholder values for the demo.
 export const DEMO_USER: User = {
   id: "demo-user",
-  name: "Asha",
-  city: "Cincinnati",
-  state: "OH",
-  zip: "45208",
-  timezone: "America/New_York",
+  name: "Jacob",
+  city: "San Francisco",
+  state: "CA",
+  zip: "94122",
+  timezone: "America/Los_Angeles",
 };
 
 /** The person and the current local time, for the agent's instructions. */

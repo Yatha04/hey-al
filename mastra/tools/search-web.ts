@@ -11,7 +11,7 @@ export const searchWebTool = createTool({
     query: z
       .string()
       .min(3)
-      .describe('A specific web search query. For local questions include the city and state, e.g. "CVS pharmacy hours Oakley Cincinnati OH".'),
+      .describe('A specific web search query. For local questions include the city and state, e.g. "Walgreens pharmacy hours Irving Street San Francisco CA".'),
   }),
   execute: async ({ query }) => ({ results: await searchWeb(query) }),
 });
