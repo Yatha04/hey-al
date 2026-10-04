@@ -1,6 +1,13 @@
 import { Agent } from "@mastra/core/agent";
 import { Mastra } from "@mastra/core/mastra";
 import { createEndCallTool } from "@mastra/livekit";
+import { Memory } from "@mastra/memory";
+import { PostgresStore } from "@mastra/pg";
+import { z } from "zod";
+
+const MODEL = "openai/gpt-4.1-mini";
+// Set by the connection route from earlier calls' summaries; see lib/calls.ts.
+export const EARLIER_CALLS_KEY = "earlierCalls";
 
 // From Saath (feat/reminders), with the reminder, weather, pace and memory tool lines removed.
 // Add a feature's prompt lines together with its tool.
@@ -23,14 +30,36 @@ Before sending a message, confirm its exact recipient and wording. A change requ
 Stay within your capabilities. Do not diagnose conditions, recommend medication changes, or claim to monitor safety or summon help unless the system actually supports it.
 
 Your replies are read aloud, so use plain sentences: no lists, numbering, headings, or symbols.
-Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.`;
+Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.
+When the person tells you a lasting fact about themselves, their family, or their preferences, update working memory. Do not save passing remarks.`;
+
+// The person's profile, kept across calls (working memory is resource-scoped by default).
+const profile = z.object({
+  name: z.string().optional(),
+  preferredName: z.string().optional().describe("How they like to be addressed"),
+  home: z.string().optional().describe("Town or city"),
+  family: z.array(z.string()).optional().describe('One entry per person, e.g. "Priya, daughter, lives in Austin"'),
+  preferences: z.array(z.string()).optional(),
+});
+
+export const memory = new Memory({
+  options: {
+    // One thread per call, so this covers a whole call; earlier calls arrive as summaries.
+    lastMessages: 40,
+    workingMemory: { enabled: true, schema: profile },
+  },
+});
 
 const al = new Agent({
   id: "al",
   name: "Al",
-  instructions: INSTRUCTIONS,
+  instructions: ({ requestContext }) => {
+    const earlier = requestContext.get(EARLIER_CALLS_KEY);
+    return typeof earlier === "string" && earlier ? `${INSTRUCTIONS}\n\nSummaries of earlier calls, oldest first:\n${earlier}` : INSTRUCTIONS;
+  },
   // Saath's choice for voice: fast first token. Mastra's model router reads OPENAI_API_KEY.
-  model: "openai/gpt-4.1-mini",
+  model: MODEL,
+  memory,
   tools: {
     endCall: createEndCallTool({
       // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
@@ -41,4 +70,17 @@ const al = new Agent({
   },
 });
 
-export const mastra = new Mastra({ agents: { al } });
+// Writes summaries; no memory, so summarizing a call never adds to a thread.
+export const summarizer = new Agent({
+  id: "summarizer",
+  name: "Summarizer",
+  instructions:
+    "Summarize this voice call between an older adult and Al, their assistant, for their family. " +
+    "Two or three plain sentences: what they talked about, what Al did, and anything left open. No greeting, no lists.",
+  model: MODEL,
+});
+
+export const mastra = new Mastra({
+  agents: { al, summarizer },
+  storage: new PostgresStore({ id: "al", connectionString: process.env.DATABASE_URL! }),
+});

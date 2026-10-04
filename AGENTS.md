@@ -1,29 +1,27 @@
 # Working on Al
 
-Al is a voice companion for older adults: a browser voice page (LiveKit), one Mastra agent and its tools, and a family dashboard. Data lives in Neon Postgres.
+Al is a voice companion for older adults: a browser voice page (LiveKit), one Mastra agent and its tools, and a family dashboard. Mastra memory stores calls and the user profile in Neon Postgres.
 
 ## Commands
 
-Node 22, npm. Copy `.env.example` to `.env` and fill it. Next.js reads `.env`; the worker and migrations load it with `--env-file`.
+Node 22, npm. Copy `.env.example` to `.env` and fill it. Next.js reads `.env`; the worker loads it with `--env-file`. Mastra creates its own tables on first start.
 
 ```bash
 npm install
 npm run agent:download     # once: turn detector and VAD model files
-npm run migrate            # apply db/migrations/*.sql to DATABASE_URL
 npm run agent              # LiveKit worker with the Mastra agent, hot reload
 npm run dev                # web app: / (voice) and /dashboard
 npm run typecheck && npm run lint
 ```
 
-Migrations are forward-only SQL files named `NNNN_description.sql`. There are no tests yet; add Vitest in `tests/unit`, `tests/integration`, `tests/e2e` when a feature needs them, and list the command here.
+There are no tests yet; add Vitest in `tests/unit`, `tests/integration`, `tests/e2e` when a feature needs them, and list the command here.
 
 ## Layout
 
-- `agent/mastra.ts` — the Mastra agent: prompt and tools. Tools go in `agent/tools/` (Mastra `createTool` with zod input).
-- `agent/worker.ts` — the LiveKit worker (`createLiveKitWorker`); persists sessions and turns.
-- `lib/` — shared feature rules and `lib/db.ts`. External clients go in `lib/integrations/` (Exa, AgentMail, Kernel, …).
-- `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `api/connection-details` (LiveKit token).
-- `db/migrations/` — schema.
+- `agent/mastra.ts` — the Mastra agent: prompt, tools, memory (Neon via `@mastra/pg`), and the summarizer. Tools go in `agent/tools/` (Mastra `createTool` with zod input).
+- `agent/worker.ts` — the LiveKit worker (`createLiveKitWorker`); summarizes each call when it ends.
+- `lib/` — shared feature rules (`lib/calls.ts`: calls are Mastra threads). External clients go in `lib/integrations/` (Exa, AgentMail, Kernel, …).
+- `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `api/connection-details` (LiveKit token plus earlier-call summaries).
 - `.claude/skills/` — review sweeps: `/audit-fallbacks <scope>`, `/audit-domain <name>`, `/pipeline-sweep <feature> --plan`, `/test-audit`.
 
 ## Scope and simplicity

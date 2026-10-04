@@ -9,8 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "agent": "tsx --env-file=.env agent/worker.ts dev",
-    "agent:download": "livekit-agents download-files",
-    "migrate": "tsx --env-file=.env db/migrate.ts"
+    "agent:download": "livekit-agents download-files"
   },
   "dependencies": {
     "@livekit/agents": "^1.9.1",
@@ -19,10 +18,11 @@
     "@livekit/components-react": "^2.9.24",
     "@mastra/core": "^1.74.0",
     "@mastra/livekit": "^0.4.2",
+    "@mastra/memory": "^1.35.0",
+    "@mastra/pg": "^1.29.0",
     "livekit-client": "^2.22.3",
     "livekit-server-sdk": "^2.19.1",
     "next": "16.3.8",
-    "pg": "^8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.6.5"
@@ -30,7 +30,6 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

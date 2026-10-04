@@ -23,7 +23,7 @@ Doctrine (AGENTS.md): never swallow failures or report success without evidence.
 
 3. **Classify each tolerance body — what can actually throw in there?** Trace one hop into called functions. Record `body_kind`: `db_read | db_write | provider_call | llm_call | pure_compute | mixed`. A body that calls a `lib/` function that touches Neon is DB-touching even if no query appears at the site.
 
-4. **Check breadth.** Every JS catch is untyped, so breadth is what the body rethrows: does it test the error and `throw err` for anything unexpected? Name the driver's error class by reading the imports in `lib/db.ts` and `lib/` (`DatabaseError` from Neon/pg or similar); do not prescribe a class you have not confirmed is importable here. A DB-touching body that rethrows nothing is presumptively wrong. A catch that swallows an `AbortError` from barge-in leaves a cancelled turn running in the agent.
+4. **Check breadth.** Every JS catch is untyped, so breadth is what the body rethrows: does it test the error and `throw err` for anything unexpected? Name the driver's error class by reading the imports in `lib/` and `agent/mastra.ts` (`DatabaseError` from pg via `@mastra/pg`, or a Mastra storage error); do not prescribe a class you have not confirmed is importable here. A DB-touching body that rethrows nothing is presumptively wrong. A catch that swallows an `AbortError` from barge-in leaves a cancelled turn running in the agent.
 
 5. **Verdict per site.** Name the expected error class(es); "Error" is not an answer.
    - **VALID_KEEP** — specific expected failure; degraded result is correct behavior; DB/transient errors cannot be silently absorbed.

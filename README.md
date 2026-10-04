@@ -10,7 +10,6 @@ Stack: LiveKit (browser voice), Mastra (agent and tools), Neon Postgres, Exa, Ag
 cp .env.example .env       # fill LiveKit, OpenAI, and Neon values
 npm install
 npm run agent:download     # once
-npm run migrate
 npm run agent              # terminal 1: voice worker
 npm run dev                # terminal 2: http://localhost:3000 and /dashboard
 ```
