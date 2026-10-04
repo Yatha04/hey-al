@@ -3,6 +3,7 @@ import { createEndCallTool } from "@mastra/livekit";
 import { EARLIER_CALLS_KEY } from "../calls";
 import { memory } from "../memory";
 import { getWeatherTool } from "../tools/get-weather";
+import { addToAmazonCartTool, openDukeBillTool } from "../tools/kernel-errands";
 import { searchWebTool } from "../tools/search-web";
 import { DEMO_USER, describeUser } from "../users";
 
@@ -42,7 +43,12 @@ After a search, answer only what was asked, in one or two short sentences:
 - For a possible scam, with or without a search, use at most three short sentences: whether it looks like a scam, what not to do, and to call back only on the organization's official number, never a number the caller gave.
 Then stop. Do not offer more details, directions, or other options; the person will ask for them.
 
-Use getWeather for the weather where the person lives. Do not use searchWeb for it. Answer in one or two short sentences: the conditions and temperature now, then today's high and low. Talk about tomorrow only when asked. Mention rain only when the chance is 30 percent or more. Say temperatures as whole degrees, such as "about 65 degrees".`;
+Use getWeather for the weather where the person lives. Do not use searchWeb for it. Answer in one or two short sentences: the conditions and temperature now, then today's high and low. Talk about tomorrow only when asked. Mention rain only when the chance is 30 percent or more. Say temperatures as whole degrees, such as "about 65 degrees".
+
+Use addToAmazonCart to put one item in the person's Amazon cart, and openDukeBill to open their Duke Energy bill. They use the person's saved logins.
+Before addToAmazonCart, say back the item in a few words and wait for a yes. One item per call.
+Both take a few minutes and report back on their own. When one returns started, say in one short sentence that you are working on it and will tell them when it is done, then keep talking about anything else. When it returns already_running, say you are still working on it. Never say the result before it is reported.
+You cannot place an Amazon order or pay a bill. If asked, say the person or their family can do that in the Amazon app or on the Duke Energy website.`;
 
 export const al = new Agent({
   id: "al",
@@ -61,6 +67,8 @@ export const al = new Agent({
   tools: {
     searchWeb: searchWebTool,
     getWeather: getWeatherTool,
+    addToAmazonCart: addToAmazonCartTool,
+    openDukeBill: openDukeBillTool,
     endCall: createEndCallTool({
       // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
       description:
