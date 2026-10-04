@@ -31,5 +31,11 @@ export function describeUser(user: User, now: Date): string {
     hour: "numeric",
     minute: "2-digit",
   });
-  return `The person's name is ${user.name}. They live in ${user.city}, ${user.state} ${user.zip}. It is now ${localTime}, their local time.`;
+  // From the date alone, Saath's model picked a Friday that had already passed, so each coming day gets its date.
+  // Calendar math on the local date at UTC noon, so daylight-saving days do not skip or repeat a day.
+  const [y, m, d] = now.toLocaleDateString("en-CA", { timeZone: user.timezone }).split("-").map(Number);
+  const week = Array.from({ length: 7 }, (_, i) =>
+    new Date(Date.UTC(y, m - 1, d + i + 1, 12)).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric" }),
+  ).join("; ");
+  return `The person's name is ${user.name}. They live in ${user.city}, ${user.state} ${user.zip}. It is now ${localTime}, their local time. The coming days are ${week}.`;
 }

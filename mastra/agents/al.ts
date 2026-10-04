@@ -2,10 +2,14 @@ import { Agent } from "@mastra/core/agent";
 import { createEndCallTool } from "@mastra/livekit";
 import { EARLIER_CALLS_KEY } from "../calls";
 import { memory } from "../memory";
+import { REMINDER_KEY, describeTime, readCallReminder } from "../reminders";
+import { acknowledgeReminderTool } from "../tools/acknowledge-reminder";
+import { createReminderTool } from "../tools/create-reminder";
 import { searchWebTool } from "../tools/search-web";
+import { snoozeReminderTool } from "../tools/snooze-reminder";
 import { DEMO_USER, describeUser } from "../users";
 
-// From Saath (feat/reminders), with the reminder, weather, pace and memory tool lines removed.
+// From Saath (feat/reminders), with the weather, pace and memory tool lines removed.
 // Add a feature's prompt lines together with its tool.
 const INSTRUCTIONS = `You are Al, a voice assistant that helps people manage everyday plans, communication, and practical questions. Support the person's choices and routines using the capabilities actually available to you.
 
@@ -37,7 +41,27 @@ After a search, answer only what was asked, in one or two short sentences:
 - For opening hours, work from the weekly hours and the current local time; "open now" or "closes soon" on a page describes when the page was saved, not now. When you give hours, add that hours can change, so call ahead to confirm.
 - For plumbers, repair people, or other services, choose licensed businesses with good reviews, and add: do not pay in full before the work is done.
 - For a possible scam, say what is known and to call back only on the organization's official number, never a number the caller gave.
-Then stop. Do not offer more details, directions, or other options; the person will ask for them.`;
+Then stop. Do not offer more details, directions, or other options; the person will ask for them.
+
+Reminders: createReminder needs what to do and a definite local date and time. If either is missing or unclear, ask for it; never guess. When it is saved, say what and when in one sentence. You remind them by calling them on this page at that time, so say so only if they ask how.`;
+
+// In a call started by a reminder. Its opening line is spoken by the worker's greeting (voice-worker.ts).
+// In Saath's first live calls an opening written by the model grew into a menu, hence the fixed greeting and these rules.
+const reminderCallInstructions = (text: string, dueAt: string) =>
+  `This call was started by the person's reminder to "${text}", set for ${dueAt}; you have already said it. ` +
+  "Do not list what they can say or ask what they want to do next; they will tell you. " +
+  "Call acknowledgeReminder only when the person says they heard it or did it, and snoozeReminder when they ask for it later. Silence means neither.";
+
+const tools = {
+  searchWeb: searchWebTool,
+  createReminder: createReminderTool,
+  endCall: createEndCallTool({
+    // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
+    description:
+      "End the call after the person says goodbye. Say a short goodbye first. " +
+      'Do not call when the person interrupts with "stop", "wait" or "hold on": that means stop talking and listen.',
+  }),
+};
 
 export const al = new Agent({
   id: "al",
@@ -47,19 +71,17 @@ export const al = new Agent({
     const parts = [INSTRUCTIONS, describeUser(DEMO_USER, new Date())];
     const earlier = requestContext.get(EARLIER_CALLS_KEY);
     if (typeof earlier === "string" && earlier) parts.push(`Summaries of earlier calls, oldest first:\n${earlier}`);
+    const reminder = readCallReminder(requestContext.get(REMINDER_KEY));
+    if (reminder) parts.push(reminderCallInstructions(reminder.text, describeTime(new Date(reminder.dueAt), DEMO_USER.timezone)));
     return parts.join("\n\n");
   },
   // gpt-4.1-mini (Saath's choice) broke the spoken-answer rules about half the time: unasked hours,
   // follow-up offers, missing warnings. gpt-4.1 followed them at the same latency. Reads OPENAI_API_KEY.
   model: "openai/gpt-4.1",
   memory,
-  tools: {
-    searchWeb: searchWebTool,
-    endCall: createEndCallTool({
-      // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
-      description:
-        "End the call after the person says goodbye. Say a short goodbye first. " +
-        'Do not call when the person interrupts with "stop", "wait" or "hold on": that means stop talking and listen.',
-    }),
-  },
+  // The acknowledge and snooze tools exist only in a reminder call, so Al never answers for a reminder it did not say.
+  tools: ({ requestContext }) =>
+    readCallReminder(requestContext.get(REMINDER_KEY))
+      ? { ...tools, acknowledgeReminder: acknowledgeReminderTool, snoozeReminder: snoozeReminderTool }
+      : tools,
 });

@@ -15,6 +15,8 @@ npm run studio             # Mastra Studio: test Al and tools by text, no voice
 npm run typecheck && npm run lint
 ```
 
+To try reminders: start a call, say "remind me to stretch in two minutes", hang up, and leave the page open. Al calls back within about five seconds of the due time. Audio plays without a click only after you have used the page.
+
 There are no tests yet; add Vitest in `tests/unit`, `tests/integration`, `tests/e2e` when a feature needs them, and list the command here.
 
 ## Layout
@@ -25,9 +27,10 @@ There are no tests yet; add Vitest in `tests/unit`, `tests/integration`, `tests/
   - `agents/al.ts` — Al's prompt, model, and tools. `agents/summarizer.ts` — end-of-call summary and profile update.
   - `tools/` — one file per tool (Mastra `createTool` with zod input); thin: validate, call `lib/integrations/`, return the result.
   - `calls.ts` — calls are memory threads: list, save turns, summarize, earlier-call summaries.
+  - `reminders.ts` — one-time reminders in our own `reminders` table (created on first use): save, claim when due, deliver, acknowledge, snooze. The idle voice page polls `api/connection-details?reminder=due`; a claimed reminder starts a call whose greeting says it.
   - `voice-worker.ts` — the LiveKit worker (`createLiveKitWorker`); memory is read-only during a call.
 - `lib/integrations/` — thin external API clients (Exa, AgentMail, Kernel, …). `lib/agent-name.ts` — the LiveKit agent name.
-- `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `api/connection-details` (LiveKit token plus earlier-call summaries).
+- `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `api/connection-details` (LiveKit token plus earlier-call summaries; with `?reminder=due`, a reminder call or 204).
 - `.claude/skills/` — review sweeps: `/audit-fallbacks <scope>`, `/audit-domain <name>`, `/pipeline-sweep <feature> --plan`, `/test-audit`.
 
 ## Scope and simplicity
