@@ -12,7 +12,7 @@ import { DEMO_USER } from "../users";
 // Kernel keeps the browser this long after the flow, so the final page can be checked in the live view.
 const IDLE_TIMEOUT_SECONDS = 600;
 
-// ponytail: the seeded demo user's saved logins, like get-weather.ts; pass the signed-in user once onboarding exists.
+// ponytail: every signed-in tester shares the demo user's saved logins; key by user once each tester signs in to their own accounts.
 async function inBrowser(site: SiteName, flow: (session: BrowserSession) => Promise<string>): Promise<string> {
   // The saved login is only read: an automated run must not overwrite it.
   const session = await openBrowser({ profileName: siteProfileName(site, DEMO_USER.id), saveProfile: false, idleTimeoutSeconds: IDLE_TIMEOUT_SECONDS });

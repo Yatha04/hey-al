@@ -22,6 +22,11 @@ export const DEMO_USER: User = {
   timezone: "America/Los_Angeles",
 };
 
+/** The signed-in user the connection route put in the call's requestContext; DEMO_USER in Mastra Studio, which has none. */
+export function currentUser(requestContext: { get(key: string): unknown } | undefined): User {
+  return (requestContext?.get(USER_KEY) as User | undefined) ?? DEMO_USER;
+}
+
 /** The person and the current local time, for the agent's instructions. */
 export function describeUser(user: User, now: Date): string {
   const localTime = now.toLocaleString("en-US", {

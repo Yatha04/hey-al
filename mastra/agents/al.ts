@@ -5,7 +5,7 @@ import { memory } from "../memory";
 import { getWeatherTool } from "../tools/get-weather";
 import { addToAmazonCartTool, openDukeBillTool } from "../tools/kernel-errands";
 import { searchWebTool } from "../tools/search-web";
-import { DEMO_USER, USER_KEY, describeUser, type User } from "../users";
+import { currentUser, describeUser } from "../users";
 
 // From Saath (feat/reminders), with the reminder, weather, pace and memory tool lines removed.
 // Add a feature's prompt lines together with its tool.
@@ -55,9 +55,7 @@ export const al = new Agent({
   name: "Al",
   // Resolved on every turn, so the local time stays current.
   instructions: ({ requestContext }) => {
-    // Set by the connection route from the signed cookie; absent only in Mastra Studio.
-    const user = (requestContext.get(USER_KEY) as User | undefined) ?? DEMO_USER;
-    const parts = [INSTRUCTIONS, describeUser(user, new Date())];
+    const parts = [INSTRUCTIONS, describeUser(currentUser(requestContext), new Date())];
     const earlier = requestContext.get(EARLIER_CALLS_KEY);
     if (typeof earlier === "string" && earlier) parts.push(`Summaries of earlier calls, oldest first:\n${earlier}`);
     return parts.join("\n\n");
