@@ -29,8 +29,9 @@ export type BrowserAgentOptions = {
 // Never clicked or typed into, whatever the model says: money moves only through a separate, confirmed step.
 // Matches the final submit only. The flows must still reach the review and payment pages, so "Proceed to checkout",
 // "Pay My Bill" and "Make a payment" stay allowed. A button named "Pay" or "Pay $42.10" is blocked.
+// Tested against element descriptions: the visible text, aria-label, aria-labelledby text, value, name and id, joined by " | ".
 export const FORBIDDEN_ELEMENT =
-  /place (your )?order|buy now|pay now|submit (your |my |the )?payment|confirm (and |& )?pay|authorize (the )?payment|make (this|the) payment|\bpay\s*\$|"pay"|^pay$/im;
+  /\bplace ?(your ?)?order|buy now|pay now|submit (your |my |the )?payment|confirm (and |& )?pay|authorize (the )?payment|make (this|the) payment|\bpay\s*\$|(^|\| )pay( \||$)/im;
 // Amazon's captcha page; add a site's wall text here when one is seen.
 export const BOT_WALL = /not a robot|enter the characters you see/i;
 // The snapshot is the model's whole view; the cap keeps a pathological page from blowing up a step.
@@ -59,6 +60,30 @@ const ActionSchema = z.object({
   reason: z.string(),
 });
 
+// ponytail: Gemini's free tier allows 250k input tokens a minute, about 7 steps on a signed-in Amazon page; waiting out
+// the window keeps a run alive. A paid key removes the wait.
+const RATE_LIMIT_WAIT_MS = 60_000;
+const RATE_LIMIT_RETRIES = 3;
+
+// The AI SDK's APICallError carries statusCode; Mastra can wrap it as the cause.
+function isRateLimit(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  if ("statusCode" in e && e.statusCode === 429) return true;
+  return "cause" in e && isRateLimit(e.cause);
+}
+
+async function withRateLimitRetry<T>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await call();
+    } catch (e) {
+      if (!isRateLimit(e) || attempt >= RATE_LIMIT_RETRIES) throw e;
+      console.warn(`browser agent: model rate limit, waiting ${RATE_LIMIT_WAIT_MS / 1000}s (retry ${attempt + 1}/${RATE_LIMIT_RETRIES})`);
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_WAIT_MS));
+    }
+  }
+}
+
 function isOnHost(url: string, host: string): boolean {
   const { hostname } = new URL(url);
   return hostname === host || hostname.endsWith(`.${host}`);
@@ -76,9 +101,11 @@ export async function runBrowserAgent(page: Page, { goal, allowedHost, maxSteps 
       .slice(-HISTORY_STEPS)
       .map((s, n) => `${n + 1}. ${s.action}${s.ref ? ` ${s.ref}` : ""}${s.element ? ` (${s.element})` : ""}: ${s.outcome}`)
       .join("\n");
-    const result = await browserAgent.generate(
-      `Goal: ${goal}\n\nPrevious steps:\n${history || "none"}\n\nCurrent page (${page.url()}):\n${snapshot}`,
-      { structuredOutput: { schema: ActionSchema }, abortSignal: AbortSignal.timeout(30_000) },
+    const result = await withRateLimitRetry(() =>
+      browserAgent.generate(`Goal: ${goal}\n\nPrevious steps:\n${history || "none"}\n\nCurrent page (${page.url()}):\n${snapshot}`, {
+        structuredOutput: { schema: ActionSchema },
+        abortSignal: AbortSignal.timeout(30_000),
+      }),
     );
     const { action, ref, text, reason } = result.object;
     const step: BrowserStep = { action, ref, element: null, outcome: "", inputTokens: result.usage?.inputTokens ?? null };
@@ -99,16 +126,25 @@ export async function runBrowserAgent(page: Page, { goal, allowedHost, maxSteps 
     // Refs resolve against the latest snapshot only; a stale or invented ref fails here and goes back to the model.
     const target = page.locator(`aria-ref=${ref}`);
     try {
-      // The accessible name plus the raw attributes: Amazon's "Place your order" is an <input> with no text content,
-      // and a wrapper element's snapshot includes the buttons inside it.
-      const name = await target.ariaSnapshot({ timeout: 5_000 });
-      const attributes = await target.evaluate(
-        (el) => ["aria-label", "value", "name", "id"].map((a) => el.getAttribute(a) ?? "").join(" "),
+      // Everything that can name the element. Amazon's "Place your order" is an <input> labelled by another element
+      // (aria-labelledby) and named placeYourOrder1; a wrapper's innerText includes the buttons inside it.
+      // Read with evaluate, not ariaSnapshot: a new snapshot replaces the refs the model chose from.
+      const description = await target.evaluate(
+        (el) => {
+          const labelledBy = (el.getAttribute("aria-labelledby") ?? "")
+            .split(/\s+/)
+            .map((id) => (id ? document.getElementById(id)?.textContent : "") ?? "");
+          const text = el instanceof HTMLElement ? el.innerText : (el.textContent ?? "");
+          return [text, el.getAttribute("aria-label"), ...labelledBy, el.getAttribute("value"), el.getAttribute("name"), el.id]
+            .map((part) => (part ?? "").trim())
+            .filter(Boolean)
+            .join(" | ");
+        },
         undefined,
         { timeout: 5_000 },
       );
-      step.element = name.split("\n")[0].replace(/^- /, "").slice(0, 120);
-      if (FORBIDDEN_ELEMENT.test(name) || FORBIDDEN_ELEMENT.test(attributes)) {
+      step.element = description.replace(/\s+/g, " ").slice(0, 120);
+      if (FORBIDDEN_ELEMENT.test(description)) {
         step.outcome = "refused: placing an order or submitting a payment is not allowed; say done if this is the final page";
         continue;
       }
@@ -132,9 +168,11 @@ export type PageReading<T> = { status: "read"; values: T; url: string } | { stat
 // in the page's visible text, or the reading is "not_on_page" with the values that could not be found.
 export async function readPage<T extends Record<string, string>>(page: Page, instruction: string, schema: z.ZodType<T>): Promise<PageReading<T>> {
   const snapshot = (await page.ariaSnapshot({ mode: "ai" })).slice(0, MAX_SNAPSHOT_CHARS);
-  const result = await browserAgent.generate(
-    `Read these values from the page, copying each exactly as it appears on the page: ${instruction}\n\nCurrent page (${page.url()}):\n${snapshot}`,
-    { structuredOutput: { schema }, abortSignal: AbortSignal.timeout(30_000) },
+  const result = await withRateLimitRetry(() =>
+    browserAgent.generate(
+      `Read these values from the page, copying each exactly as it appears on the page: ${instruction}\n\nCurrent page (${page.url()}):\n${snapshot}`,
+      { structuredOutput: { schema }, abortSignal: AbortSignal.timeout(30_000) },
+    ),
   );
   const values = schema.parse(result.object);
   const normalize = (text: string) => text.replace(/\s+/g, " ").trim().toLowerCase();

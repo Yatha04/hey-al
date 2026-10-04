@@ -43,6 +43,7 @@ export async function prepareDukePayment(page: Page): Promise<DukeBillResult> {
   });
   const steps = toPayment.steps;
   if (toPayment.status === "blocked") return { status: "blocked", steps };
+  if (toPayment.status === "gave_up") return { status: "unconfirmed", detail: `opening the payment page: ${toPayment.reason}`, steps };
   if (toPayment.status !== "done") return { status: "unconfirmed", detail: `opening the payment page: ${toPayment.status}`, steps };
   const payment = await readPage(page, "the amount this payment page will pay", PaymentSchema);
   return { status: "ready_to_pay", bill, payment, steps };

@@ -68,6 +68,7 @@ export async function prepareAmazonOrder(page: Page, request: string): Promise<A
   });
   steps.push(...checkout.steps);
   if (checkout.status === "blocked") return { status: "blocked", steps };
+  if (checkout.status === "gave_up") return { status: "unconfirmed", detail: `checkout: ${checkout.reason}`, steps };
   if (checkout.status !== "done") return { status: "unconfirmed", detail: `checkout: ${checkout.status}`, steps };
   if ((await placeOrderButton(page).count()) === 0) return { status: "unconfirmed", detail: "no Place your order button on the page", steps };
 

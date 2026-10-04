@@ -1,24 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { FORBIDDEN_ELEMENT } from "../../mastra/agents/browser";
 
-// Inputs are what the guard sees: an element's aria snapshot, or its aria-label, value, name and id joined.
+// Inputs are element descriptions as the browser agent builds them: text, aria-label, aria-labelledby text, value,
+// name and id, joined by " | ".
 describe("FORBIDDEN_ELEMENT", () => {
   it.each([
-    '- button "Place your order"',
-    " Place your order placeYourOrder1 ", // Amazon's <input>: no text content, name in the value attribute
-    '- generic:\n  - button "Place your order"', // a wrapper around the final button
-    '- button "Buy Now"',
-    '- button "Pay"',
-    '- button "Pay $42.10"',
-    '- button "Submit Payment"',
+    "Place your order",
+    "Place your order | placeYourOrder1", // Amazon's <input>: labelled by another element, named placeYourOrder1
+    "placeYourOrder1 | submitOrderButtonId", // the same input when its label is not found
+    "Order summary\nItems: $21.78\nPlace your order", // a wrapper around the final button
+    "Buy Now",
+    "Pay",
+    "Pay | pay-button",
+    "Pay $42.10",
+    "Submit Payment",
   ])("blocks %j", (element) => expect(FORBIDDEN_ELEMENT.test(element)).toBe(true));
 
   it.each([
-    '- button "Proceed to checkout"',
-    '- link "Pay My Bill"',
-    '- link "Make a payment"',
-    '- button "Add to cart"',
-    '- link "Payment options"',
-    '- button "Continue"',
+    "Proceed to checkout | proceedToRetailCheckout",
+    "Pay My Bill",
+    "Make a payment",
+    "Add to cart | submit.addToCart",
+    "Payment options",
+    "Continue",
+    "Replace order history filter",
+    "Paypal",
   ])("allows %j", (element) => expect(FORBIDDEN_ELEMENT.test(element)).toBe(false));
 });
