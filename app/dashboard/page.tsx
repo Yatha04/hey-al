@@ -1,13 +1,15 @@
 // Family dashboard: what Al knows and recent calls, read from Mastra memory on every request.
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
 import { getProfile, listCalls } from "@/mastra/calls";
-import { DEMO_USER } from "@/mastra/users";
 
 export const dynamic = "force-dynamic";
 
-const time = (d: Date) => d.toLocaleString("en-US", { timeZone: DEMO_USER.timezone, dateStyle: "medium", timeStyle: "short" });
-
 export default async function Dashboard() {
-  const [profile, calls] = await Promise.all([getProfile(DEMO_USER.id), listCalls(DEMO_USER.id, 20)]);
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const [profile, calls] = await Promise.all([getProfile(user.id), listCalls(user.id, 20)]);
+  const time = (d: Date) => d.toLocaleString("en-US", { timeZone: user.timezone, dateStyle: "medium", timeStyle: "short" });
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-10 p-6">

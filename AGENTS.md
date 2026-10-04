@@ -32,7 +32,8 @@ Tests use Vitest in `tests/unit`, `tests/integration`, `tests/e2e`; list each ne
   - `sites.ts` — sites Al acts on with a saved Kernel login (Amazon, Duke Energy): login check and bot wall. `amazon-order.ts` — add an item and stop on the checkout review page; `duke-bill.ts` — open the current bill (a PDF tab), scripted. Amazon drives `agents/browser.ts`, an LLM that acts on the page; code guards refuse the final order or payment click. Not yet tools.
   - `voice-worker.ts` — the LiveKit worker (`createLiveKitWorker`); memory is read-only during a call.
 - `lib/integrations/` — thin external API clients (Exa, AgentMail, Kernel, …); `kernel.ts` opens a Kernel cloud browser and connects Playwright. `lib/agent-name.ts` — the LiveKit agent name.
-- `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `api/connection-details` (LiveKit token plus earlier-call summaries).
+- `lib/session.ts` — tester login: the signed-in user lives in an HMAC-signed cookie (no users table). `/login` asks for a name and city; each login is a new user with its own memory. The connection route passes the user to the worker in `requestContext`. Kernel site logins stay on `DEMO_USER.id`: every tester shares that one saved Amazon and Duke login.
+- `app/` — Next.js: `page.tsx` voice page, `dashboard/`, `login/`, `api/login`, `api/logout`, `api/connection-details` (LiveKit token, the user, and earlier-call summaries).
 - `.claude/skills/` — review sweeps: `/audit-fallbacks <scope>`, `/audit-domain <name>`, `/pipeline-sweep <feature> --plan`, `/test-audit`.
 
 ## Scope and simplicity
@@ -65,3 +66,13 @@ Tests use Vitest in `tests/unit`, `tests/integration`, `tests/e2e`; list each ne
 - TypeScript: files `kebab-case.ts`, functions `camelCase` starting with a verb (`saveTurn`), types `PascalCase`, constants `UPPER_SNAKE`. Tool ids match the function they call.
 - Database: tables plural `snake_case`; foreign keys `<singular>_id`; timestamps `timestamptz` named `<event>_at`; statuses are `text` with a `CHECK` list; indexes `<table>_<columns>`.
 - Environment variables: `UPPER_SNAKE`; provider variables keep the provider's names (`LIVEKIT_API_KEY`).
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

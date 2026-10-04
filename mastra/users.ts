@@ -9,8 +9,10 @@ export type User = {
   timezone: string; // IANA
 };
 
-// ponytail: one seeded demo user until onboarding exists; then load the signed-in user's record.
-// Placeholder values for the demo.
+// The connection route puts the signed-in user in the call's requestContext under this key.
+export const USER_KEY = "user";
+
+// Mastra Studio has no signed-in user, so Al falls back to this one there.
 export const DEMO_USER: User = {
   id: "demo-user",
   name: "Jacob",
@@ -31,5 +33,6 @@ export function describeUser(user: User, now: Date): string {
     hour: "numeric",
     minute: "2-digit",
   });
-  return `The person's name is ${user.name}. They live in ${user.city}, ${user.state} ${user.zip}. It is now ${localTime}, their local time.`;
+  const place = [`${user.city}, ${user.state}`, user.zip].filter(Boolean).join(" "); // zip is optional at login
+  return `The person's name is ${user.name}. They live in ${place}. It is now ${localTime}, their local time.`;
 }

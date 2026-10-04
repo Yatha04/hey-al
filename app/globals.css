@@ -64,3 +64,27 @@ button:focus-visible { outline: 2px solid #93ceff; outline-offset: 7px; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .orb { transform: none !important; }
 }
+
+/* Login page and the voice page's top bar. Same palette as the voice page. */
+.login { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; text-align: center; background: radial-gradient(ellipse at 50% 20%, #10203966, transparent 50%); }
+.login-orb { margin-bottom: 36px; }
+.login-orb .orb { width: 112px; }
+.login-orb .orb-halo { inset: -28px; }
+.login-orb .orb-shadow { top: calc(100% + 14px); }
+.login h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 10px; }
+.login-lead { color: #959ead; font-size: 15px; line-height: 1.55; max-width: 330px; margin: 0 0 32px; }
+.login-card { width: min(380px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 24px; text-align: left; background: #11151fcc; border: 1px solid #ffffff12; border-radius: 22px; box-shadow: 0 20px 60px #0006; backdrop-filter: blur(18px); }
+.login-card label { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
+.login-card label > span { font-size: 13px; color: #b4bccb; }
+.login-card em { font-style: normal; color: #6f7888; margin-left: 4px; }
+.login-card input { height: 46px; padding: 0 14px; font: inherit; font-size: 16px; color: var(--foreground); background: #0b0e16; border: 1px solid #ffffff18; border-radius: 12px; outline: none; transition: border-color 150ms, box-shadow 150ms; }
+.login-card input::placeholder { color: #4d5565; }
+.login-card input:focus { border-color: #93ceff99; box-shadow: 0 0 0 3px #93ceff22; }
+.login-row { display: flex; gap: 12px; }
+.login-state { flex: 0 0 88px !important; }
+.login-error { margin: 0; padding: 10px 12px; font-size: 14px; color: #f3b9c2; background: #efa8b314; border: 1px solid #efa8b333; border-radius: 10px; }
+.login-submit { margin-top: 6px; width: 100%; }
+.top-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: max(18px, env(safe-area-inset-top)) 24px 0; font-size: 14px; color: #b4bccb; }
+.top-bar nav { display: flex; align-items: center; gap: 4px; }
+.top-bar a, .top-bar button { padding: 7px 12px; color: #9aa5b6; background: none; border: 0; border-radius: 20px; text-decoration: none; font-size: 14px; }
+.top-bar a:hover, .top-bar button:hover { color: var(--foreground); background: #ffffff0c; }
