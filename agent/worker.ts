@@ -23,16 +23,18 @@ export default createLiveKitWorker({
     endCall: {},
   },
   onSessionStart: async ({ session, ctx }) => {
-    const sessionId = await startSession(DEMO_USER_ID, ctx.room.name ?? ctx.job.room?.name ?? "");
+    // Not awaited: the listener must attach now, or turns committed during the insert (the greeting) are lost.
+    const sessionId = startSession(DEMO_USER_ID, ctx.job.room!.name);
     const pending = new Set<Promise<void>>();
 
     session.on(voice.AgentSessionEventTypes.ConversationItemAdded, ({ item }) => {
       if (item.type !== "message" || (item.role !== "user" && item.role !== "assistant")) return;
       const text = item.textContent;
       if (!text) return;
-      const write = saveTurn(sessionId, item.role, text, item.interrupted, new Date(item.createdAt)).catch((e) => {
+      const { role, interrupted, createdAt } = item;
+      const write = sessionId.then((id) => saveTurn(id, role, text, interrupted, new Date(createdAt))).catch((e) => {
         // A lost transcript line must not end the live conversation. Error name only: the row is personal content.
-        console.error("saveTurn failed", { sessionId, error: e instanceof Error ? e.name : typeof e });
+        console.error("saveTurn failed", { roomName: ctx.job.room!.name, error: e instanceof Error ? e.name : typeof e });
       });
       pending.add(write);
       void write.finally(() => pending.delete(write));
@@ -40,7 +42,7 @@ export default createLiveKitWorker({
 
     ctx.addShutdownCallback(async () => {
       await Promise.all(pending);
-      await endSession(sessionId);
+      await endSession(await sessionId);
     });
   },
 });
