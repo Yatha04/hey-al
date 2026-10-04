@@ -18,6 +18,8 @@ export type AmazonOrderResult =
   | { status: "ready_to_place"; review: PageReading<z.infer<typeof ReviewSchema>>; steps: BrowserStep[] }
   | { status: "signed_out" | "blocked"; steps: BrowserStep[] }
   | { status: "no_match"; reason: string; steps: BrowserStep[] }
+  // The item is in the cart (count checked), but checkout stopped on the payment step: the account has no payment method.
+  | { status: "needs_payment"; steps: BrowserStep[] }
   // The agent stopped or said done without code-checked evidence: do not report progress; look at the page.
   | { status: "unconfirmed"; detail: string; steps: BrowserStep[] };
 
@@ -31,6 +33,11 @@ async function readCartCount(page: Page): Promise<number> {
 // The review page's final button; present means checkout reached the last step.
 function placeOrderButton(page: Page) {
   return page.locator('input[name="placeYourOrder1"], #submitOrderButtonId, #placeOrder').or(page.getByRole("button", { name: /place your order/i }));
+}
+
+// The payment step of checkout, shown when no saved payment method is selected (checked 2026-10-04).
+async function isPaymentStep(page: Page): Promise<boolean> {
+  return new URL(page.url()).pathname.includes("/pay") || (await page.getByRole("button", { name: /use this payment method/i }).count()) > 0;
 }
 
 export async function prepareAmazonOrder(page: Page, request: string): Promise<AmazonOrderResult> {
@@ -68,6 +75,7 @@ export async function prepareAmazonOrder(page: Page, request: string): Promise<A
   });
   steps.push(...checkout.steps);
   if (checkout.status === "blocked") return { status: "blocked", steps };
+  if ((await placeOrderButton(page).count()) === 0 && (await isPaymentStep(page))) return { status: "needs_payment", steps };
   if (checkout.status === "gave_up") return { status: "unconfirmed", detail: `checkout: ${checkout.reason}`, steps };
   if (checkout.status !== "done") return { status: "unconfirmed", detail: `checkout: ${checkout.status}`, steps };
   if ((await placeOrderButton(page).count()) === 0) return { status: "unconfirmed", detail: "no Place your order button on the page", steps };

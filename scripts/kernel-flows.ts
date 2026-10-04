@@ -52,4 +52,4 @@ const statuses = await Promise.all([
     : null,
 ]);
 console.log("\nstatuses:", statuses.filter(Boolean).join(", "));
-if (statuses.some((s) => s && s !== "ready_to_place" && s !== "bill_open")) process.exitCode = 1;
+if (statuses.some((s) => s && s !== "ready_to_place" && s !== "needs_payment" && s !== "bill_open")) process.exitCode = 1;

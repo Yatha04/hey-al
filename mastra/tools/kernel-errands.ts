@@ -42,6 +42,8 @@ async function amazonErrand(item: string): Promise<string> {
         return SIGNED_OUT("Amazon");
       case "blocked":
         return BLOCKED("Amazon");
+      case "needs_payment":
+        return `I put ${item} in your Amazon cart. To place the order, a payment method needs to be added to the Amazon account first.`;
       case "no_match":
         return `I could not find ${item} on Amazon.`;
       case "unconfirmed":
