@@ -2,6 +2,7 @@ import { Agent } from "@mastra/core/agent";
 import { createEndCallTool } from "@mastra/livekit";
 import { EARLIER_CALLS_KEY } from "../calls";
 import { memory } from "../memory";
+import { getWeatherTool } from "../tools/get-weather";
 import { searchWebTool } from "../tools/search-web";
 import { DEMO_USER, describeUser } from "../users";
 
@@ -28,16 +29,20 @@ Stay within your capabilities. Do not diagnose conditions, recommend medication 
 Your replies are read aloud, so use plain sentences: no lists, numbering, headings, or symbols.
 Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.
 
-Use searchWeb for opening hours, nearby places, phone numbers, local services, events, and to check whether a call or message is a scam. Do not answer these from memory. For anything local, put the person's city and state in the query.
+Use searchWeb for opening hours, nearby places, phone numbers, local services, events, and to check whether a call or message is a scam. Do not answer these from memory. For anything local, put the person's city and state in the query, and their ZIP code for anything near them.
 After a search, answer only what was asked, in one or two short sentences:
 - Say the one fact asked for first. "Where is the nearest pharmacy?" gets the place and its street, nothing more.
 - Add hours only when asked about hours or whether a place is open. Add a phone number only when asked for one or when calling is the next step.
-- Name at most two places, services, or events. Choose the closest ones, and skip any result outside their city.
+- Name at most two places, services, or events, with at most one short reason each. Choose the closest ones, and skip any result outside their city. Never say ZIP codes.
 - Never read out web addresses.
+- When results disagree, trust the business's own website over directory and review sites.
+- If any result about the place has closedForGood, say only that it seems to have closed for good. Do not give its hours.
 - For opening hours, work from the weekly hours and the current local time; "open now" or "closes soon" on a page describes when the page was saved, not now. When you give hours, add that hours can change, so call ahead to confirm.
 - For plumbers, repair people, or other services, choose licensed businesses with good reviews, and add: do not pay in full before the work is done.
-- For a possible scam, say what is known and to call back only on the organization's official number, never a number the caller gave.
-Then stop. Do not offer more details, directions, or other options; the person will ask for them.`;
+- For a possible scam, with or without a search, use at most three short sentences: whether it looks like a scam, what not to do, and to call back only on the organization's official number, never a number the caller gave.
+Then stop. Do not offer more details, directions, or other options; the person will ask for them.
+
+Use getWeather for the weather where the person lives. Do not use searchWeb for it. Answer in one or two short sentences: the conditions and temperature now, then today's high and low. Talk about tomorrow only when asked. Mention rain only when the chance is 30 percent or more. Say temperatures as whole degrees, such as "about 65 degrees".`;
 
 export const al = new Agent({
   id: "al",
@@ -55,6 +60,7 @@ export const al = new Agent({
   memory,
   tools: {
     searchWeb: searchWebTool,
+    getWeather: getWeatherTool,
     endCall: createEndCallTool({
       // In Saath testing, "Wait. Stop." said over a reply made the model hang up.
       description:

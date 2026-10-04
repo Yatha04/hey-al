@@ -11,7 +11,8 @@ export const searchWebTool = createTool({
     query: z
       .string()
       .min(3)
-      .describe('A specific web search query. For local questions include the city and state, e.g. "Walgreens pharmacy hours Irving Street San Francisco CA".'),
+      .describe('A specific web search query. For local questions include the city and state, and the ZIP code for "near me" or "nearest", e.g. "Walgreens pharmacy hours Irving Street San Francisco CA". ' +
+          'Search for hours, never "open now": pages that say "open now" are stale.'),
   }),
   execute: async ({ query }) => ({ results: await searchWeb(query) }),
 });
