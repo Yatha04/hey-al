@@ -43,3 +43,6 @@ next-env.d.ts
 
 # mastra dev build output
 .mastra/
+
+# local debug output (screenshots may show account details)
+/tmp
