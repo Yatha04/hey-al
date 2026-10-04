@@ -29,9 +29,15 @@ export type BrowserAgentOptions = {
 // Never clicked or typed into, whatever the model says: money moves only through a separate, confirmed step.
 // Matches the final submit only. The flows must still reach the review and payment pages, so "Proceed to checkout",
 // "Pay My Bill" and "Make a payment" stay allowed. A button named "Pay" or "Pay $42.10" is blocked.
+// Also blocked: buttons that charge at once (1-Click "Buy HD $14.99", Audible "Buy for 1 credit") and sign-ups that bill
+// later (Prime trials offered in checkout, Subscribe & Save "Set Up Now").
 // Tested against element descriptions: the visible text, aria-label, aria-labelledby text, value, name and id, joined by " | ".
-export const FORBIDDEN_ELEMENT =
-  /\bplace ?(your ?)?order|buy now|pay now|submit (your |my |the )?payment|confirm (and |& )?pay|authorize (the )?payment|make (this|the) payment|\bpay\s*\$|(^|\| )pay( \||$)/im;
+const FORBIDDEN_ELEMENT =
+  /\bplace ?(your ?)?order|buy now|buy (hd|sd|uhd|4k|for|with)\b|1-click|pay now|submit (your |my |the )?(payment|order)|confirm (and |& )?pay|confirm (your |the )?(purchase|order)|complete (your |the )?purchase|authorize (the )?payment|make (this|the) payment|try prime|free trial|set up now|start (your )?(membership|subscription)|\bpay\s*\$|(^|\| )pay( \||$)/im;
+// Also tested with whitespace collapsed: a &nbsp; or a line break inside "Place your order" must not slip past.
+export function isForbiddenElement(description: string): boolean {
+  return FORBIDDEN_ELEMENT.test(description) || FORBIDDEN_ELEMENT.test(description.replace(/\s+/g, " "));
+}
 // Amazon's captcha page; add a site's wall text here when one is seen.
 export const BOT_WALL = /not a robot|enter the characters you see/i;
 // The snapshot is the model's whole view; the cap keeps a pathological page from blowing up a step.
@@ -157,7 +163,7 @@ export async function runBrowserAgent(page: Page, { goal, allowedHost, maxSteps 
         { timeout: 5_000 },
       );
       step.element = description.replace(/\s+/g, " ").slice(0, 120);
-      if (FORBIDDEN_ELEMENT.test(description)) {
+      if (isForbiddenElement(description)) {
         step.outcome = "refused: placing an order or submitting a payment is not allowed; say done if this is the final page";
         continue;
       }
@@ -191,7 +197,8 @@ export async function readPage<T extends Record<string, string>>(page: Page, ins
   const normalize = (text: string) => text.replace(/\s+/g, " ").trim().toLowerCase();
   const pageText = normalize(await page.locator("body").innerText({ timeout: 10_000 }));
   const missing = Object.entries(values)
-    .filter(([, value]) => !pageText.includes(normalize(value)))
+    // An empty value is "found" in any text, so it counts as missing.
+    .filter(([, value]) => !normalize(value) || !pageText.includes(normalize(value)))
     .map(([key]) => key);
   return missing.length ? { status: "not_on_page", values, missing, url: page.url() } : { status: "read", values, url: page.url() };
 }

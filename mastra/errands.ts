@@ -1,6 +1,8 @@
 // Errands: browser flows that take minutes, too long to hold a voice turn. A tool starts one and returns at once;
-// when it ends, its sentence is spoken into the call that asked for it (or logged, e.g. in Studio or after hang-up).
+// when it ends, its sentence is spoken into the call that asked for it (or logged when there is no call, e.g. in Studio).
 // Its own module so tools and the voice worker can both import it without a cycle.
+// ponytail: errands live in the call's process, and LiveKit exits that process when the call ends, so hanging up
+// stops an errand midway (Kernel ends its browser after the idle timeout). Move them to a job queue to outlive the call.
 
 const speakers = new Map<string, (text: string) => void>();
 const running = new Set<string>();

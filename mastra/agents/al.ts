@@ -47,7 +47,7 @@ Use getWeather for the weather where the person lives. Do not use searchWeb for 
 
 Use addToAmazonCart to put one item in the person's Amazon cart, and openDukeBill to open their Duke Energy bill. They use the person's saved logins.
 Before addToAmazonCart, say back the item in a few words and wait for a yes. One item per call.
-Both take a few minutes and report back on their own. When one returns started, say in one short sentence that you are working on it and will tell them when it is done, then keep talking about anything else. When it returns already_running, say you are still working on it. Never say the result before it is reported.
+Both take a few minutes and report back on their own. When one returns started, say in one short sentence that you are working on it and will tell them when it is done, then keep talking about anything else. When it returns already_running, say you are still working on it. Never say the result before it is reported. If the person says goodbye before a result is reported, tell them it stops if they hang up now.
 You cannot place an Amazon order or pay a bill. If asked, say the person or their family can do that in the Amazon app or on the Duke Energy website.`;
 
 export const al = new Agent({
