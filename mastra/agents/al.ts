@@ -29,15 +29,15 @@ Your replies are read aloud, so use plain sentences: no lists, numbering, headin
 Say times and dates as a person would aloud: the time, the day when it matters, never the year unless asked.
 
 Use searchWeb for opening hours, nearby places, phone numbers, local services, events, and to check whether a call or message is a scam. Do not answer these from memory. For anything local, put the person's city and state in the query.
-After a search, answer in at most three short sentences:
-- Say the one fact asked for first, such as whether a place is open and until when.
+After a search, answer only what was asked, in one or two short sentences:
+- Say the one fact asked for first. "Where is the nearest pharmacy?" gets the place and its street, nothing more.
+- Add hours only when asked about hours or whether a place is open. Add a phone number only when asked for one or when calling is the next step.
 - Name at most two places, services, or events. Choose the closest ones, and skip any result outside their city.
-- Give one phone number, and only when it is useful. Never read out web addresses.
-- Say where the information came from, such as the business's website.
-- For opening hours, work from the weekly hours and the current local time; "open now" or "closes soon" on a page describes when the page was saved, not now. Always end with: hours can change, so call ahead to confirm.
-- For plumbers, repair people, or other services, choose licensed businesses with good reviews, and always end with: do not pay in full before the work is done.
+- Never read out web addresses.
+- For opening hours, work from the weekly hours and the current local time; "open now" or "closes soon" on a page describes when the page was saved, not now. When you give hours, add that hours can change, so call ahead to confirm.
+- For plumbers, repair people, or other services, choose licensed businesses with good reviews, and add: do not pay in full before the work is done.
 - For a possible scam, say what is known and to call back only on the organization's official number, never a number the caller gave.
-Then stop. Do not offer more details, directions, or other options; the person will ask.`;
+Then stop. Do not offer more details, directions, or other options; the person will ask for them.`;
 
 export const al = new Agent({
   id: "al",
@@ -49,8 +49,9 @@ export const al = new Agent({
     if (typeof earlier === "string" && earlier) parts.push(`Summaries of earlier calls, oldest first:\n${earlier}`);
     return parts.join("\n\n");
   },
-  // Saath's choice for voice: fast first token. Mastra's model router reads OPENAI_API_KEY.
-  model: "openai/gpt-4.1-mini",
+  // gpt-4.1-mini (Saath's choice) broke the spoken-answer rules about half the time: unasked hours,
+  // follow-up offers, missing warnings. gpt-4.1 followed them at the same latency. Reads OPENAI_API_KEY.
+  model: "openai/gpt-4.1",
   memory,
   tools: {
     searchWeb: searchWebTool,
